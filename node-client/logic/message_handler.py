@@ -2,8 +2,8 @@ import logging
 import threading
 import queue
 import datetime
-import uuid # id = uuid.uuid4()
 import json
+from state.status import Status
 from typing import Union, List
 
 
@@ -67,8 +67,8 @@ class Message:
 
 
     def __validate_fields(self, message: dict) -> List[str]:
-        # TODO: Check that no additional fields are set (?)
         fields_expected = ['messageId', 'text', 'dateTime', 'sender', 'chatId']
+        # TODO: Check that no additional fields are set (?)
         # TODO: nodeId, id <- fields should be deleted in node-server before broadcasting msg to client
 
         fields_missing = []
@@ -111,11 +111,14 @@ class MessageHandler(threading.Thread):
     def handle_new_client_message(self, message: str):
         # TODO: Use queue for outgoing messages
 
+        if len(message) == 0:
+            return
+
         msg = {
             'type': 'newMessageFromClient',
             'payload': {
                 'text': message,
-                'sender': 'pythonClientUser',
+                'sender': Status.get_username(),
                 'chatId': 11
             }
         }

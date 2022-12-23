@@ -37,10 +37,13 @@ def initialize() -> tuple:
         return None, None
 
     thread_msg_handler = MessageHandler()
-    WebsocketClient.Msg_handler = thread_msg_handler.handle_incoming
+    #WebsocketClient.Msg_handler = thread_msg_handler.handle_incoming
 
     ns_endp = endpoints_all[0] # TODO: Iterate and try all suggestions if unable to connect
-    thread_wsclient    = WebsocketClient(f'ws://{urlify(*ns_endp.values())}')
+    thread_wsclient    = WebsocketClient(
+        f'ws://{urlify(*ns_endp.values())}',
+        thread_msg_handler.handle_incoming
+    )
     MessageHandler.Websocket_msg_sender = thread_wsclient.send_message
 
     logging.info('dsatter CLIENT initialized')

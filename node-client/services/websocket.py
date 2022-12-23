@@ -1,7 +1,8 @@
 import logging
 import threading
-
 import websocket
+from typing import Union
+from state.status import Status
 
 
 # websocket library links
@@ -17,20 +18,29 @@ class WebsocketClient(threading.Thread):
     as a daemon.
     '''
 
-    Msg_handler = None
 
-    def __init__(self, url: str) -> 'WebsocketClient':
+    def __init__(self, url: str, msg_handler: callable) -> 'WebsocketClient':
         super().__init__()
-
+        self.__incoming_msg__handler = msg_handler
         self.__ws = websocket.WebSocketApp(
             url,
-            on_message=WebsocketClient.on_message,
+            on_message=self.on_message,
             on_error=WebsocketClient.on_error,
             on_close=WebsocketClient.on_close,
             on_open=WebsocketClient.on_open,
             on_ping=WebsocketClient.on_ping,
             on_pong=WebsocketClient.on_pong
         )
+
+
+    @property
+    def incoming_msg_handler(self) -> Union[callable, None]:
+        return self.__incoming_msg__handler
+
+
+    @incoming_msg_handler.setter
+    def incoming_msg_handler(self, cb: callable) -> None:
+        self.__incoming_msg__handler = cb
 
 
     def run(self) -> None:
@@ -61,11 +71,17 @@ class WebsocketClient(threading.Thread):
 
 
     def send_message(self, message: str) -> None:
+        if not isinstance(message, str):
+            logging.error('WS Attempted to send a message that is of wrong type')
+            return
+
         self.__ws.send(message)
+
 
     def terminate(self) -> None:
         logging.debug('WS Thread terminate')
         self.__ws.close()
+
 
     def __str__(self):
         t = threading.current_thread()
@@ -74,33 +90,39 @@ class WebsocketClient(threading.Thread):
             f'name={t.name}, alive={t.is_alive()} daemon={t.daemon}, id={t.ident}'
         ))
 
-    @staticmethod
-    def on_message(ws: websocket._app.WebSocketApp, message: str) -> None:
-        logging.debug(f'Websocket: RECEIVED: {message}')
-        if WebsocketClient.Msg_handler == None:
+
+    def on_message(self, ws: websocket._app.WebSocketApp, message: str) -> None:
+        if self.__incoming_msg__handler == None:
             logging.error('Message handler not installed')
             return
-        WebsocketClient.Msg_handler(message)
+
+        self.__incoming_msg__handler(message)
+
 
     @staticmethod
     def on_error(ws: websocket._app.WebSocketApp, error: websocket._exceptions) -> None:
         # Several different exception types are defined in websocket._exceptions."CLASSNAME"
         logging.error(f'Websocket: {error}')
 
+
     @staticmethod
     def on_close(ws: websocket._app.WebSocketApp, status_code, message) -> None:
         # This is where to handle the situation where connection is terminated by the server
         logging.debug(f'Websocket: CLOSE: {status_code} {message}')
-        #logging.debug(f'CLOSE types: ws: {type(ws)}. status_code: {type(status_code)}. message: {type(message)}.')
+        Status.set_ws_connection(None)
+
 
     @staticmethod
     def on_open(ws: websocket._app.WebSocketApp) -> None:
         logging.debug(f'Websocket: OPEN')
+        Status.set_ws_connection(ws.url)
         ws.send('Client connected')
+
 
     @staticmethod
     def on_ping(ws: websocket._app.WebSocketApp, message: str) -> None:
         logging.debug(f'Websocket: PING, message: [[{message}]]. PONG has been sent')
+
 
     @staticmethod
     def on_pong(ws: websocket._app.WebSocketApp, message: str) -> None:

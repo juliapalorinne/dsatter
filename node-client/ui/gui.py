@@ -3,7 +3,10 @@ import tkinter as tk
 
 from datetime import datetime
 from tkinter import ttk
-from typing  import Tuple
+from tkinter.messagebox import showwarning
+from typing  import Tuple, Union
+
+from state.status import Status
 
 
 #class ReadOnlyText(tk.Text):
@@ -34,20 +37,53 @@ class StatusFrame(GridFrame):
     def __init__(self, master, grid_row, grid_column, grid_columnspan):
         super().__init__(master, grid_row, grid_column, grid_columnspan)
 
-        self.__node_label = ttk.Label(self, text='NOT IMPLEMENTED: Connected to node:')
+        self.__username_var = tk.StringVar(self, Status.get_username())
+
+        active_conn = Status.get_ws_connection()
+        self.__ws_connection_var = tk.StringVar(
+            self,
+            active_conn if active_conn is not None else 'Disconnected'
+        )
+
+        self.__node_label = ttk.Label(self, text='Connected to node:')
         self.__node_label.grid(row=0, column=0, pady=1, padx=1)
 
-        self.__node_info = ttk.Label(self, text='127.0.0.1:8080')
+        self.__node_info = ttk.Label(self, textvariable=self.__ws_connection_var)
         self.__node_info.grid(row=0, column=1, pady=1, padx=1)
 
-        self.__user_label = ttk.Label(self, text='NOT IMPLEMENTED: Name')
+        self.__user_label = ttk.Label(self, text='Username:')
         self.__user_label.grid(row=1, column=0, pady=1, padx=1)
 
-        self.__user_entry = ttk.Entry(self, text='Dsatter user')
-        self.__user_entry.grid(row=1, column=1, pady=1, padx=1)
+        self.__user_info = ttk.Label(self, textvariable=self.__username_var)
+        self.__user_info.grid(row=1, column=1, pady=1, padx=1)
 
-        self.__user_set_btn = ttk.Button(self, text='Set username')
-        self.__user_set_btn.grid(row=1, column=2, pady=1, padx=1)
+        self.__user_entry_label = ttk.Label(self, text='Username:')
+        self.__user_entry_label.grid(row=2, column=0, pady=1, padx=1)
+
+        self.__user_entry = ttk.Entry(self, text=self.__username_var.get())
+        self.__user_entry.grid(row=2, column=1, pady=1, padx=1)
+        self.__user_entry.bind('<Return>', self.__set_username_handler)
+
+        self.__user_set_btn = ttk.Button(self, text='Set username', command=self.__set_username_handler)
+        self.__user_set_btn.grid(row=2, column=2, pady=1, padx=1)
+
+        Status.set_update_gui_cb(self.update_labels)
+
+
+    def update_labels(self, username: str, connection: Union[str, None]) -> None:
+        self.__username_var.set(username)
+        self.__ws_connection_var.set(connection if connection is not None else 'Disconnected')
+
+    def __set_username_handler(self, key_event = None) -> None:
+        username = self.__user_entry.get()
+        if len(username) < 4 or not Status.set_username(username):
+            # TODO: Show error
+            showwarning(
+                title=f"Could not set username to '{username}'",
+                message='Username must be at least 4 characters long'
+            )
+            return
+
 
 
 #class MessagesFrame(GridFrame):
