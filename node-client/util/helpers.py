@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from typing import Union
 from time import sleep
 
@@ -59,3 +60,40 @@ def urlify(url: str, port: Union[int, str], path: str = "") -> str:
         url = f'{protocol}{url}'
 
     return f'{url}:{port}/{path}'
+
+def parse_addr_and_port_from_url(url: str) -> dict:
+    full_url = url
+    url = url.strip()
+
+    url = re.sub('^(ws://|wss://|http://|https://)', '', url)
+
+    if len(url) == 0:
+        raise ValueError(f'Url `{full_url}` could not be parsed.')
+
+    elif url[-1] == '/':
+        url = url[:-1]
+
+    i = url.rfind(':')
+    if i == -1:
+        raise ValueError(f'Url `{full_url}` could not be parsed. The port is missing.')
+
+    port = url[i+1:]
+    url = url[:i]
+
+    i = port.find('/')
+    if i != -1:
+        logging.info(f'Dropping path `{port[i:]}` part from the url `{full_url}`.')
+        port = port[:i]
+
+    if len(url[i+1:]) == 0:
+        raise ValueError(f'Url `{full_url}` could not be parsed. The port is missing.')
+
+    try:
+        port = int(port)
+    except:
+        raise ValueError(f'Url `{full_url}` could not be parsed. The port must be a number.')
+
+    return {
+        'address': url,
+        'clientport': port
+    }

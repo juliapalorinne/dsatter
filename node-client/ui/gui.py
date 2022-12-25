@@ -74,10 +74,10 @@ class StatusFrame(GridFrame):
         self.__username_var.set(username)
         self.__ws_connection_var.set(connection if connection is not None else 'Disconnected')
 
+
     def __set_username_handler(self, key_event = None) -> None:
         username = self.__user_entry.get()
         if len(username) < 4 or not Status.set_username(username):
-            # TODO: Show error
             showwarning(
                 title=f"Could not set username to '{username}'",
                 message='Username must be at least 4 characters long'
@@ -238,7 +238,9 @@ class App(ttk.Frame):
             win_maxsize: Tuple[int, int] = (1024, 1024),
             master: tk.Tk = None) -> 'App':
         super().__init__(master)
+
         self.master.title(win_title)
+        self.master.protocol('WM_DELETE_WINDOW', self.__on_quit)
         #self.master.minsize(width, height)
         self.master.maxsize(win_maxsize[0], win_maxsize[1])
 
@@ -252,32 +254,29 @@ class App(ttk.Frame):
         self.__messages_frame  = MessagesFrame(self, grid_row=1, grid_column=0, grid_columnspan=3)
         self.__msg_entry_frame = MessageEntryFrame(self, grid_row=2, grid_column=0, grid_columnspan=3, new_msg_handler=self.__new_client_msg_handler)
 
+
     def __init_menu(self):
         self.__menu = tk.Menu(self.master)
         self.master.config(menu=self.__menu)
 
         self.__menuFile = tk.Menu(self.__menu)
-        self.__menuFile.add_command(label='Exit', command=self.__quit)
+        self.__menuFile.add_command(label='Exit', command=self.__on_quit)
         self.__menu.add_cascade(label='File', menu=self.__menuFile)
 
         self.__menuEdit = tk.Menu(self.__menu)
         self.__menu.add_cascade(label='Edit', menu=self.__menuEdit)
 
-    def __quit(self):
-        print('k thx goodbye')
+
+    def __on_quit(self):
+        Status.set_update_gui_cb(None)
         self.master.quit()
+
 
     def refresh_msgs(self, messages: list) -> None:
         logging.debug('New Message!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
 
         print('MESSAGE LIST:', messages)
         self.__messages_frame._add_messages(messages)
-
-#    def close_window(self):
-#        pass
-#
-#    def close(self):
-#        pass
 
 
 if __name__ == '__main__':
