@@ -112,6 +112,7 @@ class WebsocketClient(threading.Thread):
 
 
     def on_message(self, ws: websocket._app.WebSocketApp, message: str) -> None:
+        logging.debug(f'WS MESSAGE: {message}')
         if self.__incoming_msg__handler == None:
             logging.info('Message handler not installed, message discarded')
             return

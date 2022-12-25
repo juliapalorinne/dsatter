@@ -97,3 +97,20 @@ def parse_addr_and_port_from_url(url: str) -> dict:
         'address': url,
         'clientport': port
     }
+
+def parse_full_url(url: str) -> dict:
+    socket = parse_addr_and_port_from_url(url)
+
+    if url[-1] == '/':
+        url = url[:-1]
+
+    port_str = str(socket['clientport'])
+    i = url.find(port_str)
+
+    path = url[i+len(port_str)+1:]
+
+    return {
+        'host': socket['address'],
+        'port': port_str,
+        'path': path
+    }

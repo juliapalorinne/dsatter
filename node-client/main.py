@@ -8,14 +8,17 @@ from tkinter import Tk
 from typing import Union, Tuple
 
 from util.helpers import urlify, parse_addr_and_port_from_url
-from state.status import Settings
+from state.status import load_config, save_config, Settings
+
 from ui.gui import App
 from services.rest_client import RESTClient
 from services.websocket import WebsocketClient
 from logic.message_handler import MessageHandler
 
+CONFIG_FILEPATH = 'config.ini'
 
-def parse_args() -> Tuple[str, Union[str, None]]:
+
+def parse_args() -> Tuple[Union[str, None], bool]:
     desc = 'Chat client for DSatter.'
 
     parser = argparse.ArgumentParser(description=desc)
@@ -26,7 +29,7 @@ def parse_args() -> Tuple[str, Union[str, None]]:
     )
     parser.add_argument('-d', '--discovery',
         help=f'Url with port to a running node-discovery server to use. Defaults to `{Settings.get_node_discovery_url()}`',
-        default=Settings.get_node_discovery_url(),
+        default=None,
         dest='discovery_url'
     )
     parser.add_argument('-s', '--server',
@@ -35,11 +38,13 @@ def parse_args() -> Tuple[str, Union[str, None]]:
     )
     args = parser.parse_args()
 
-    return args.discovery_url, args.node_server_url, args.verbose_logging
+    if args.discovery_url is not None:
+        Settings.set_node_discovery_full_url(args.discovery_url)
+
+    return args.node_server_url, args.verbose_logging
 
 
 def initialize(
-    discovery_url: str,
     node_server_url: Union[str, None],
     verbose_logging: bool
 ) -> Tuple[Union[WebsocketClient, None], Union[MessageHandler, None]]:
@@ -56,7 +61,7 @@ def initialize(
     )
 
     if node_server_url is None:
-        node_srv_endpoints = RESTClient.get(discovery_url)
+        node_srv_endpoints = RESTClient.get(Settings.get_node_discovery_url())
         if node_srv_endpoints is None:
             logging.info('Discovery node unreachable, exiting')
             return None, None
@@ -126,10 +131,14 @@ def main(thread_wsclient: WebsocketClient, thread_msg_handler: MessageHandler) -
 
 
 if __name__ == '__main__':
-    discovery_url, node_server_url, verbose_logging = parse_args()
-    thread_wsclient, thread_msg_handler = initialize(discovery_url, node_server_url, verbose_logging)
+    load_config(CONFIG_FILEPATH)
+
+    node_server_url, verbose_logging = parse_args()
+    thread_wsclient, thread_msg_handler = initialize(node_server_url, verbose_logging)
 
     if thread_wsclient is not None and thread_msg_handler is not None:
         logging.info('dsatter CLIENT initialized')
         main(thread_wsclient, thread_msg_handler)
         logging.info('dsatter CLIENT shutting down')
+
+    save_config(CONFIG_FILEPATH)
