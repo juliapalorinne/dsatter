@@ -107,7 +107,7 @@ class StatusFrame(GridFrame):
 
 
 class MessagesFrame(GridFrame):
-    TIME_STR_F = '%Y-%m-%dT%H:%M:%S.%fZ'
+    TIME_STR_F = '%Y-%m-%dT%H:%M:%S.%fZ%z'
 
     def __init__(self, master, grid_row, grid_column, grid_columnspan):
         super().__init__(master, grid_row, grid_column, grid_columnspan)
@@ -146,7 +146,7 @@ class MessagesFrame(GridFrame):
                 parent='',
                 index=indx,
                 iid=(msg['messageId'], msg['dateTime'].strftime(MessagesFrame.TIME_STR_F)),
-                values=(msg['dateTime'].strftime('%d.%m %H:%M.%S'), msg['sender'], msg['text'])
+                values=(msg['dateTime'].astimezone().strftime('%d.%m %H:%M.%S'), msg['sender'], msg['text'])
             )
 
         if msg['messageId'] in self.__message_ids:

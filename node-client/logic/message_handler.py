@@ -49,8 +49,8 @@ class Message:
         else:
             try:
                 parsed_msg['dateTime'] = datetime.datetime.strptime(
-                    parsed_msg['dateTime'],
-                    '%Y-%m-%dT%H:%M:%S.%fZ'
+                    f'{parsed_msg["dateTime"]}+0000',
+                    '%Y-%m-%dT%H:%M:%S.%fZ%z'
                 )
             except Exception as err:
                 logging.warning('Parsing new message, dateTime has invalid format:', err)
