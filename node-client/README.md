@@ -37,4 +37,4 @@ optional arguments:
                         service for active node-servers.
 ```
 
-When the client is terminated it will save the settings in a file called `config.ini`, which is interpreted at startup. If this file does not exist then it will use default settings.
+When the client is terminated it will save the settings in a file called `config.ini`, which is interpreted at startup. Default values are used if this file does not exist or any setting is missing from it.

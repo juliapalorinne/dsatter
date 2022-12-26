@@ -2,7 +2,7 @@ import logging
 import os
 import re
 from typing import Union
-from time import sleep
+from time   import sleep
 
 
 def catch_exception_sleep(timeout, retry = 100):

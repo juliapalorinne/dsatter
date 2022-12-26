@@ -4,7 +4,7 @@ import queue
 import datetime
 import json
 from state.status import Status
-from typing import Union, List
+from typing import List, Union
 
 
 class Message:
@@ -53,7 +53,7 @@ class Message:
                     '%Y-%m-%dT%H:%M:%S.%fZ%z'
                 )
             except Exception as err:
-                logging.warning('Parsing new message, dateTime has invalid format:', err)
+                logging.warning(f'Parsing new message, dateTime has invalid format: {err}')
                 error = True
         if not isinstance(parsed_msg['sender'], str):
             logging.warning('parsing new message, sender is not of type str')
@@ -90,26 +90,68 @@ class MessageHandler(threading.Thread):
     as a daemon.
     '''
 
-    Websocket_msg_sender = None
 
     def __init__(self) -> 'MessageHandler':
         super().__init__()
 
+        # Map different message types to handlers. Intentionally crashes if a message with
+        # a unsupported type is received. TODO: log or otherwise handle these message types!
         self.__MSG_TYPES = {
-        'clientSyncRequest': None,
-        'clientSyncReply': None,
-        'newMessageFromClient': None,
-        'newMessagesForClient': self.__handle_new_msg,
-        'clientMessageResponse': lambda added: print('RESPONSE (added):', added)
+            'clientSyncRequest': None,
+            'clientSyncReply': None,
+            'newMessageFromClient': None,
+            'newMessagesForClient': self.__handle_incoming_new_client_msg,
+            'clientMessageResponse': lambda added: print('RESPONSE (added):', added)
         }
 
         self.__message_queue = queue.Queue()
-        self.__on_message_event: callable = None
+        self.__on_msg_ui_cb: callable = None
+        self.__msg_sender_cb: callable = None
         self.__continue = True
 
 
-    def handle_new_client_message(self, message: str):
-        # TODO: Use queue for outgoing messages
+    @property
+    def on_msg_ui_cb(self) -> Union[callable, None]:
+        return self.__on_msg_ui_cb
+
+
+    @on_msg_ui_cb.setter
+    def on_msg_ui_cb(self, cb: Union[callable, None]) -> None:
+        self.__on_msg_ui_cb = cb
+
+
+    @property
+    def msg_sender_cb(self) -> Union[callable, None]:
+        return self.__msg_sender_cb
+
+
+    @msg_sender_cb.setter
+    def msg_sender_cb(self, cb: Union[callable, None]) -> None:
+        self.__msg_sender_cb = cb
+
+
+    def run(self) -> None:
+        '''
+        This method is called by threading.Thread.start method.
+        The 'main' function of the thread.
+        '''
+
+        logging.debug('Message handler thread started')
+
+        while self.__continue:
+            self.__purge_messages()
+
+        logging.debug('Message handler thread stopping')
+
+
+    def stop(self) -> None:
+        self.__message_queue.put(None, block=False)
+        self.__on_msg_ui_cb = None
+        self.__msg_sender_cb = None
+
+
+    def handle_new_client_message(self, message: str) -> None:
+        # TODO: Use queue for outgoing messages, keep messages in queue until ACK is received
 
         if len(message) == 0:
             return
@@ -123,11 +165,11 @@ class MessageHandler(threading.Thread):
             }
         }
 
-        if MessageHandler.Websocket_msg_sender is None:
+        if self.msg_sender_cb is None:
             logging.info('WS message sender not installed, discarding new message')
             return
 
-        MessageHandler.Websocket_msg_sender(json.dumps(msg))
+        self.msg_sender_cb(json.dumps(msg))
 
 
     def handle_incoming(self, message: str) -> None:
@@ -135,106 +177,56 @@ class MessageHandler(threading.Thread):
             msg = json.loads(message)
         except Exception as err:
             logging.error(err)
-            logging.error('Discarding incoming message')
+            logging.error(f'RECEIVED malformed message: {message}, ignoring')
             return
 
         if not ('type' in msg and 'payload' in msg):
-            logging.error('Received incomplete message:', msg)
+            logging.error(f'RECEIVED incomplete message: {msg}, ignoring')
             return
 
-        if msg['type'] in self.__MSG_TYPES:
+        if msg['type'] in self.__MSG_TYPES.keys():
             for m in msg['payload']:
                 self.__MSG_TYPES[msg['type']](m)
         else:
             logging.info(f'RECEIVED unknown message type, ignoring: {msg}')
 
 
-    def __handle_new_msg(self, message: dict):
+    def __handle_incoming_new_client_msg(self, message: dict):
         try:
             msg = Message(message)
         except Exception as err:
             logging.warning(f'Error when handling incoming message: {err}')
-
-        # TODO: Use try/except to catch case if queue is full
-        self.__message_queue.put(msg, block=False)
-
-
-    @property
-    def on_message_event(self) -> callable:
-        return self.__on_message_event
-
-
-    @on_message_event.setter
-    def on_message_event(self, func: callable) -> None:
-        logging.debug('Message handler installed')
-        self.__on_message_event = func
-
-
-    def run(self) -> None:
-        '''
-        This method is called by threading.Thread.start method.
-        The 'main' function of the thread.
-        '''
-
-        logging.debug('Message handler thread initialized')
-
-        while self.__continue:
-            self.__continue = self.handle_message_event()
-
-        logging.debug('Message handler thread stopping')
-
-
-    def terminate(self) -> None:
-        self.__message_queue.put(None, block=False)
-#    def create_message(self, message: Union[str, None]) -> None:
-#        '''
-#        Append a new message to the queue. This thread will stop
-#        if message is None. This function never blocks, only logs
-#        error messages if there is any exceptions when attempting to
-#        add messages to the queue.
-#        '''
-#
-#        if message is not None:
-#            logging.debug(f'Creating message: {message}')
-#            if len(message) == 0:
-#                return
-#
-#            ordered_msg = OrderedMessage({
-#                'id': uuid.uuid4(),
-#                'timestamp': datetime.datetime.now(),
-#                'sender': 'Test Tester',
-#                'message': message
-#            })
-#
-#            logging.debug(f'ordered message: {ordered_msg.message["message"]}')
-#
-#        try:
-#            self.__message_queue.put(
-#                ordered_msg if message is not None else None,
-#                block=False
-#            )
-#        except queue.Full as e:
-#            logging.error('Messages queue is full, not handeled:', e)
-#        except Exception as e:
-#            logging.error('Exception happened when attempting to add message to the queue: ', e)
-
-
-    def handle_message_event(self) -> bool:
-        msg = self.__message_queue.get()
-        if msg is None:
-            return False
-
-
-        #self.__messages.put(msg)
-
-        # NOTE: Python priority queues are implemented as binary heap data structure,
-        #       so printing the raw elements in the internal queue does not follow the
-        #       ordering in the priority queue.
-        #logging.debug(f'messages {[ m.message for m in self.__messages.queue ]}')
-
-        if self.__on_message_event is None:
             return
 
-        self.__on_message_event([ msg.message ])
+        try:
+            self.__message_queue.put(msg, block=False)
+        except queue.Full as e:
+            logging.error(f'Messages queue is full, discarding new message: {e}')
+        except Exception as e:
+            logging.error(f'Exception happened when attempting to add message to the queue: {e}')
 
-        return True
+
+    def __purge_messages(self) -> None:
+        msg = self.__message_queue.get()
+        self.__message_queue.task_done()
+
+        if msg is None:
+            self.__continue = False
+            return
+
+        messages = [msg.message]
+
+        while not self.__message_queue.empty() and len(messages) < 50:
+            msg = self.__message_queue.get()
+            self.__message_queue.task_done()
+
+            if msg is None:
+                self.__continue = False
+                break
+
+            messages.append(msg.message)
+
+        if self.on_msg_ui_cb is None:
+            logging.warning('GUI updating failed, no handler installed. Message(s) are discarded')
+        else:
+            self.on_msg_ui_cb(messages)

@@ -1,8 +1,6 @@
-import sys, os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-
 import requests
 from typing import Union
+
 from util.helpers import catch_exception_sleep
 
 class RESTClient:

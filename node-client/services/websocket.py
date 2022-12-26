@@ -53,7 +53,7 @@ class WebsocketClient(threading.Thread):
 
 
     @incoming_msg_handler.setter
-    def incoming_msg_handler(self, cb: callable) -> None:
+    def incoming_msg_handler(self, cb: Union[callable, None]) -> None:
         self.__incoming_msg__handler = cb
 
 
@@ -92,7 +92,7 @@ class WebsocketClient(threading.Thread):
         self.__ws.send(message)
 
 
-    def terminate(self) -> None:
+    def stop(self) -> None:
         self.__ws.close()
 
 
@@ -114,7 +114,7 @@ class WebsocketClient(threading.Thread):
     def on_message(self, ws: websocket._app.WebSocketApp, message: str) -> None:
         logging.debug(f'WS MESSAGE: {message}')
         if self.__incoming_msg__handler == None:
-            logging.info('Message handler not installed, message discarded')
+            logging.info('Websocket: Received message, bessage handler not installed => message discarded')
             return
 
         self.__incoming_msg__handler(message)
@@ -127,9 +127,9 @@ class WebsocketClient(threading.Thread):
 
 
     def on_close(self, ws: websocket._app.WebSocketApp, status_code, message) -> None:
-        logging.debug(f'Websocket: CLOSE: {status_code} {message}')
         self.__is_connected = False
         Status.set_ws_connection(None)
+        logging.debug(f'Websocket: CLOSE - Status code: [[{status_code}]]. Message: [[{message}]]')
 
 
     @staticmethod

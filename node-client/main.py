@@ -106,15 +106,16 @@ def initialize(
             break
 
         logging.info(f'Connection attempt to node-server at url: `{ns_endp}` failed')
-        thread_wsclient.terminate()
+        thread_wsclient.stop()
 
         i = (i+1) % len(node_srv_endpoints)
         if i == 0:
             logging.info('Could not open a connection to any node-server, exiting')
             return None, None
 
+    thread_msg_handler.msg_sender_cb = thread_wsclient.send_message
+
     thread_msg_handler.start()
-    MessageHandler.Websocket_msg_sender = thread_wsclient.send_message
 
     return thread_wsclient, thread_msg_handler
 
@@ -122,14 +123,14 @@ def initialize(
 def main(thread_wsclient: WebsocketClient, thread_msg_handler: MessageHandler) -> None:
     root = Tk()
 
-    app = App('dsatter Chat Client', thread_msg_handler.handle_new_client_message, (1024, 1024), root)
+    app = App('DSatter Chat Client', thread_msg_handler.handle_new_client_message, (1024, 1024), root)
 
-    thread_msg_handler.on_message_event = app.refresh_msgs
+    thread_msg_handler.on_msg_ui_cb = app.append_msgs
 
     app.mainloop()
 
-    thread_msg_handler.terminate()
-    thread_wsclient.terminate()
+    thread_msg_handler.stop()
+    thread_wsclient.stop()
 
     thread_wsclient.join()
     thread_msg_handler.join()
@@ -142,8 +143,8 @@ if __name__ == '__main__':
     thread_wsclient, thread_msg_handler = initialize(node_server_url, verbose_logging)
 
     if thread_wsclient is not None and thread_msg_handler is not None:
-        logging.info('dsatter CLIENT initialized')
+        logging.info('DSatter chat client initialized')
         main(thread_wsclient, thread_msg_handler)
-        logging.info('dsatter CLIENT shutting down')
+        logging.info('DSatter chat client shutting down')
 
-    save_config(CONFIG_FILEPATH)
+        save_config(CONFIG_FILEPATH)

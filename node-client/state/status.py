@@ -1,7 +1,6 @@
 import configparser
 
 from threading import Lock
-from typing    import Union
 from random    import randrange
 from typing    import Union
 

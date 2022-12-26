@@ -1,5 +1,8 @@
 # DSatter
-Real-time chat service backend. The chat service runs as a distributed system on the edge of the cloud. The contents of this repository is the result of a group effort for the course [Distributed Systems](https://studies.helsinki.fi/courses/cur/hy-opt-cur-2223-b8ec1422-835b-4bdb-bd2c-25df506de0f8/CSM13001/Distributed_Systems_Lectures) organized by the University of Helsinki.
+DSatter is a real-time chat service that is implemented as a Distributed System with the backend running on the edge of the cloud.
+
+
+This project originally started as a course project for the course [Distributed Systems](https://studies.helsinki.fi/courses/cur/hy-opt-cur-2223-b8ec1422-835b-4bdb-bd2c-25df506de0f8/CSM13001/Distributed_Systems_Lectures), organized by the University of Helsinki.
 
 The core system consists of two different types of nodes: one discovery node whose main task is to implement the naming service functionality, and a set of server nodes.
 
@@ -8,6 +11,9 @@ The core system consists of two different types of nodes: one discovery node who
 
 ### Common
 Contains common modules and types that are used by all types of nodes.
+
+### Node client
+Client application for the chat service. Serves as the users interface to the chat service.
 
 ### Node discovery
 Serves node-servers and clients. Provides a REST endpoint for the different nodes. Assigns ids for node-servers and provides endpoints for them to register to or query statuses of their peers. Also provides a REST endpoint for clients to query for endpoints to connect to.
@@ -19,13 +25,13 @@ Provides an endpoint for clients to connect to. Handles incoming messages, conve
 A simple test to test the performance of the system.
 
 ## Usage
-The node discovery and server are packaged as npm packages and are implemented using Javascript running on nodejs. The performance test is implemented as a python virtual environment.
+The node discovery and server are packaged as npm packages and are implemented using Javascript running on nodejs. The client and performance test are packaged as python virtual environments. Instructions for running the python packages are given in their own README's.
 
-## Running the distributed chat service
+## Running the distributed chat service backend
 All nodes have 2 different environments configured; production and development. When running in the development environment additional checks and debug-prints are done. Also the startup differs a bit between the different modes. Detailed info about required arguments are given separately for each node in their own directories.
 
 ### Dockerized (production environment)
-You can run the project in production mode, utilizing the docker scripts. The provided scripts handle all required arguments.
+You can run the backend in production mode, utilizing the docker scripts. The provided scripts handle all required arguments.
 
 #### Setting up Dockerized environment:
 ```

@@ -1,30 +1,12 @@
 import logging
 import tkinter as tk
 
-from datetime import datetime
-from tkinter import ttk
+from datetime           import datetime
+from tkinter            import ttk
 from tkinter.messagebox import showwarning
-from typing  import Tuple, Union
+from typing             import Tuple, Union
 
 from state.status import Status
-
-
-#class ReadOnlyText(tk.Text):
-#    def __init__(self, *args, **kwargs):
-#        tk.Text.__init__(self, *args, **kwargs)
-#        self.bind('<Key>', lambda e: ReadOnlyText.filter_txt_events(e))
-#
-#    @staticmethod
-#    def filter_txt_events(event):
-#        '''
-#        Kills the event if it's not caused by a ctrl+c.
-#        '''
-#        # value of state is apparently different on windows hosts(?),
-#        # NOT tested for.
-#        ctrl_pressed_state = 12 if os.name == 'nt' else 4
-#        if event.state == ctrl_pressed_state and event.keysym == 'c':
-#            return
-#        return "break"
 
 
 class GridFrame(ttk.Frame):
@@ -34,6 +16,7 @@ class GridFrame(ttk.Frame):
 
 
 class StatusFrame(GridFrame):
+
     def __init__(self, master, grid_row, grid_column, grid_columnspan):
         super().__init__(master, grid_row, grid_column, grid_columnspan)
 
@@ -70,6 +53,10 @@ class StatusFrame(GridFrame):
         Status.set_update_gui_cb(self.update_labels)
 
 
+    def __del__(self) -> None:
+        Status.set_update_gui_cb(None)
+
+
     def update_labels(self, username: str, connection: Union[str, None]) -> None:
         self.__username_var.set(username)
         self.__ws_connection_var.set(connection if connection is not None else 'Disconnected')
@@ -85,28 +72,8 @@ class StatusFrame(GridFrame):
             return
 
 
-
-#class MessagesFrame(GridFrame):
-#    def __init__(self, master, grid_row, grid_column, grid_columnspan):
-#        super().__init__(master, grid_row, grid_column, grid_columnspan)
-#
-#        self.__messages = ReadOnlyText(self)
-#        self.__messages.pack(side=tk.LEFT, fill=tk.BOTH)
-#        self.__messages.insert(tk.END, 'No messages.. :(')
-#
-#        self.__scrollbar = ttk.Scrollbar(self)
-#        self.__scrollbar.pack(side=tk.RIGHT, fill=tk.BOTH)
-#        self.__messages.config(yscrollcommand=self.__scrollbar.set)
-#        self.__scrollbar.config(command=self.__messages.yview)
-#
-#    def _add_new_message(self, message: OrderedMessage) -> None:
-#        def formatter(m: OrderedMessage):
-#            return f'\n{m["dateTime"].strftime("%H:%M")} - {m["sender"]}: {m["text"]}'
-#        self.__messages.insert(tk.END, formatter(message))
-#        print('MessageFrame\n--------------\n', message, '\n')
-
-
 class MessagesFrame(GridFrame):
+
     TIME_STR_F = '%Y-%m-%dT%H:%M:%S.%fZ%z'
 
     def __init__(self, master, grid_row, grid_column, grid_columnspan):
@@ -127,14 +94,15 @@ class MessagesFrame(GridFrame):
 
         self.__scrollbar = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.__tree.yview)
         self.__tree.configure(yscroll=self.__scrollbar.set)
-        self.__scrollbar.pack(side=tk.RIGHT, fill=tk.BOTH) #grid(row=0, column=1, sticky='ns')
+        self.__scrollbar.pack(side=tk.RIGHT, fill=tk.BOTH)
+
 
     def __show_selected(self, event):
         for selected_msg in self.__tree.selection():
             item = self.__tree.item(selected_msg)
-            print('\nselected:', selected_msg)
-            print('item:', item)
-            print('-----\n')
+            logging.debug(f'\nselected: {selected_msg}')
+            logging.debug(f'item: {item}')
+            logging.debug('-----\n')
 
 
     def __insert_message(self, msg):
@@ -150,7 +118,7 @@ class MessagesFrame(GridFrame):
             )
 
         if msg['messageId'] in self.__message_ids:
-            print('Message is already rendered. Editing or updating edited messages is not supported')
+            logging.info('Message is already rendered. Editing or updating edited messages is not supported')
             return
 
         children = self.__tree.get_children()
@@ -176,7 +144,7 @@ class MessagesFrame(GridFrame):
             i += 1 # advance i to next pos
 
         if i > len(children):
-            print('binary search error... message not inserted')
+            logging.warning('binary search error... message not inserted')
             return
         elif i == len(children):
             i = tk.END
@@ -194,6 +162,7 @@ class MessagesFrame(GridFrame):
 
 
 class MessageEntryFrame(GridFrame):
+
     def __init__(self, master, grid_row, grid_column, grid_columnspan, new_msg_handler: callable):
         super().__init__(master, grid_row, grid_column, grid_columnspan)
 
@@ -212,10 +181,12 @@ class MessageEntryFrame(GridFrame):
         self.__button_send = ttk.Button(self, text='Send', command=self.__on_new_message)
         self.__button_send.grid(row=0, column=2, pady=1, padx=1)
 
+
     def __on_entry_click(self, event):
         self.__entry.configure(state=tk.NORMAL)
         self.__entry.delete(0, tk.END)
         self.__entry.unbind('<Button-1>')
+
 
     def __on_new_message(self, key_event = None):
         message = self.__entry.get()
@@ -272,14 +243,5 @@ class App(ttk.Frame):
         self.master.quit()
 
 
-    def refresh_msgs(self, messages: list) -> None:
-        logging.debug('New Message!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-
-        print('MESSAGE LIST:', messages)
+    def append_msgs(self, messages: list) -> None:
         self.__messages_frame._add_messages(messages)
-
-
-if __name__ == '__main__':
-    pass
-    #app = App(tk.Tk())
-    #app.master.mainloop()
