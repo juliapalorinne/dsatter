@@ -19,7 +19,13 @@ CONFIG_FILEPATH = 'config.ini'
 
 
 def parse_args() -> Tuple[Union[str, None], bool]:
-    desc = 'Chat client for DSatter.'
+    desc = ' '.join((
+        'Chat client for DSatter.',
+        'If the client is run without the optional -s or -d arguments,',
+        'then it will attempt to query the discovery service for node-servers using the same url as on the previous time it was run.',
+        'Creates a config.ini file, where it saves the settings. Delete this file to use default values.',
+        'This app has been developed and tested using python 3.8.10.'
+    ))
 
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('-lv', '--log-verbose',
@@ -30,7 +36,7 @@ def parse_args() -> Tuple[Union[str, None], bool]:
     parser.add_argument('-d', '--discovery',
         help=f'Url with port to a running node-discovery server to use. Defaults to `{Settings.get_node_discovery_url()}`',
         default=None,
-        dest='discovery_url'
+        dest='node_discovery_url'
     )
     parser.add_argument('-s', '--server',
         help='Url with a port in case you want to connect to a specific node-server. By default queries the discovery service for active node-servers.',
@@ -38,8 +44,8 @@ def parse_args() -> Tuple[Union[str, None], bool]:
     )
     args = parser.parse_args()
 
-    if args.discovery_url is not None:
-        Settings.set_node_discovery_full_url(args.discovery_url)
+    if args.node_discovery_url is not None:
+        Settings.set_node_discovery_full_url(args.node_discovery_url)
 
     return args.node_server_url, args.verbose_logging
 
@@ -116,7 +122,6 @@ def initialize(
 def main(thread_wsclient: WebsocketClient, thread_msg_handler: MessageHandler) -> None:
     root = Tk()
 
-    # TODO: Only pass the needed functions to App (instead of full objects)
     app = App('dsatter Chat Client', thread_msg_handler.handle_new_client_message, (1024, 1024), root)
 
     thread_msg_handler.on_message_event = app.refresh_msgs
